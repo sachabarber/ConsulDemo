@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Nito.AsyncEx;
 
 namespace ConsulDemoApi.Client
 {
@@ -11,8 +12,14 @@ namespace ConsulDemoApi.Client
     {
         private static IConfigurationRoot _configuration;
         private static ApiClient _apiClient;
+        private static int _howMany = 10;
 
-        public static void Main(string[] args)
+        private static void Main(string[] args)
+        {
+            MainAsync(args).GetAwaiter().GetResult();
+        }
+
+        static async Task MainAsync(string[] args)
         {
             LoadConfig();
             Console.WriteLine("Press a key to call api/values using Consul");
@@ -22,9 +29,12 @@ namespace ConsulDemoApi.Client
 
             try
             {
-                _apiClient.Initialize().Wait();
+                await Task.CompletedTask;
 
-                ListValues().Wait();
+                await _apiClient.Initialize();
+                await DeleteValues();
+                await PutValues();
+                await ListValues();
             }
             catch (Exception)
             {
@@ -50,6 +60,21 @@ namespace ConsulDemoApi.Client
             Console.WriteLine($"Values : {string.Join(",", values)}");
         }
 
-       
+        private static async Task DeleteValues()
+        {
+            for (int i = 1; i < _howMany; i++)
+            {
+                await _apiClient.DeleteValueAsync(i);
+            }
+        }
+
+        private static async Task PutValues()
+        {
+            for (int i = 1; i < _howMany; i++)
+            {
+                await _apiClient.PutValueAsync(i, Guid.NewGuid().ToString());
+            }
+        }
+
     }
 }

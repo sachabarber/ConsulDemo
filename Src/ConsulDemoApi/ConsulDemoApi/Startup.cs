@@ -34,6 +34,13 @@ namespace ConsulDemoApi
                 consulConfig.Address = new Uri(address);
             }));
 
+            services.AddSingleton<Func<IConsulClient>>(p => () => new ConsulClient(consulConfig =>
+            {
+                var address = Configuration["ConsulConfig:Address"];
+                consulConfig.Address = new Uri(address);
+            }));
+
+
             services.AddMvc().AddJsonOptions(options =>
             {
                 options.SerializerSettings.ContractResolver = new CamelCasePropertyNamesContractResolver();

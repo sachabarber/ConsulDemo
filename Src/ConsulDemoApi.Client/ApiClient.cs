@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Text;
 using System.Threading.Tasks;
 using Consul;
+using ConsulDemoApi.Client.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -77,21 +79,45 @@ namespace ConsulDemoApi.Client
             }
         }
 
-        public virtual Task<IEnumerable<string>> GetValuesAsync()
+        public Task<IEnumerable<string>> GetValuesAsync()
         {
             return _serverRetryPolicy.ExecuteAsync(async () =>
                 {
                     var serverUrl = _serverUrls[_currentConfigIndex];
                     var requestPath = $"{serverUrl}api/values";
-
-                    _logger.LogInformation($"Making request to {requestPath}");
+                    _logger.LogInformation($"Making request to GET {requestPath}");
                     var response = await _apiClient.GetAsync(requestPath).ConfigureAwait(false);
                     var content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-
                     return JsonConvert.DeserializeObject<IEnumerable<string>>(content);
                 });
         }
 
-        
+        public Task<bool> DeleteValueAsync(int id)
+        {
+            return _serverRetryPolicy.ExecuteAsync(async () =>
+            {
+                var serverUrl = _serverUrls[_currentConfigIndex];
+                var requestPath = $"{serverUrl}api/values/{id}";
+                _logger.LogInformation($"Making request to DELETE {requestPath}");
+                var response = await _apiClient.DeleteAsync(requestPath).ConfigureAwait(false);
+                return response.IsSuccessStatusCode;
+            });
+        }
+
+        public Task<bool> PutValueAsync(int id, string theValue)
+        {
+            return _serverRetryPolicy.ExecuteAsync(async () =>
+            {
+                var valueWrapper = new ValueWrapper() { Value = theValue };
+                var json = JsonConvert.SerializeObject(valueWrapper);
+
+                var serverUrl = _serverUrls[_currentConfigIndex];
+                var requestPath = $"{serverUrl}api/values/{id}";
+                _logger.LogInformation($"Making request to PUT {requestPath}");
+                var stringContent = new StringContent(json, Encoding.UTF8, "application/json");
+                var response = await _apiClient.PutAsync(requestPath, stringContent);
+                return response.IsSuccessStatusCode;
+            });
+        }
     }
 }
