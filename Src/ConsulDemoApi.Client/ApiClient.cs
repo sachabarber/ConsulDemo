@@ -61,10 +61,10 @@ namespace ConsulDemoApi.Client
             _logger.LogInformation($"Retry count set to {retries}");
 
             _serverRetryPolicy = Policy.Handle<HttpRequestException>()
-               .RetryAsync(retries, (exception, retryCount) =>
-               {
-                   ChooseNextServer(retryCount);
-               });
+                .RetryAsync(retries, (exception, retryCount) =>
+                {
+                    ChooseNextServer(retryCount);
+                });
         }
 
         private void ChooseNextServer(int retryCount)

@@ -1,0 +1,639 @@
+
+
+<ul>
+<li><a href="#Introduction">Introduction</a></li>
+
+<li><a href="#Problem-we-are-trying-to-solve">Problem we are trying to solve</a></li>
+
+<li><a href="#Existing-solutions">Existing solutions</a>
+<ul>
+<li><a href="#Zookeeper">Zookeeper</a></li>
+
+<li><a href="#Redis/DataStore">Redis/DataStore</a></li>
+
+<li><a href="#Kubernetes">Kubernetes</a></li>
+
+<li><a href="#Consul">Consul</a></li>
+
+</ul>
+
+<li><a href="#Consul-discussion">Consul discussion</a>
+<ul>
+<li><a href="#Who-created-Consul,-why-should-we-trust-it?">Who created Consul, why should we trust it?</a></li>
+
+<li><a href="#The-basic-idea">The basic idea</a></li>
+
+<li><a href="#Is-it-reliable?">Is it reliable?</a></li>
+
+<li><a href="#Client-libraries">Client libraries</a></li>
+
+<li><a href="#Web-dashboard">Web dashboard</a></li>
+
+</ul>
+
+<li><a href="#Demo-app-using-Consul.Net">Demo app using Consul.Net</a>
+<ul>
+
+<li><a href="#Demo-app-prerequisites">Demo app prerequisites</a></li>
+
+<li><a href="#Running-The-Demo">Running The Demo</a></li>
+
+<li><a href="#An-example-API">An example API</a>
+<ul>
+<li><a href="#API-controller">API controller</a></li>
+
+<li><a href="#Registration/health-checks">Registration/health checks</a>
+<ul>
+<li><a href="#Create-some-config">Create some config</a></li>
+
+<li><a href="#Register-the-service">Register the service</a></li>
+
+<li><a href="#Bootstrap-the-IOC-container">Bootstrap the IOC container</a></li>
+
+</ul>
+
+</ul>
+
+<li><a href="#An-example-client">An example client</a>
+<ul>
+<li><a href="#Get-metadata-using-the-Catalog">Get metadata using the Catalog</a></li>
+
+<li><a href="#Retries-and-switchover-using-Polly">Retries and switchover using Polly</a></li>
+
+</ul>
+
+<li><a href="#Web-dashboard-for-the-demo-app">Web dashboard for the demo app</a></li>
+
+</ul>
+
+<li><a href="#Conclusion">Conclusion</a></li>
+
+</ul>
+
+
+<h1><a name="Introduction" id="Introduction">Introduction</a></h1>
+<p>Are Madonna once said &quot;we are living in a micro services world&quot;. Ok she 
+didn't quite say that, but what does she know. We <strong>ARE</strong> living in 
+a micro services world.</p>
+<p>If you are currently doing/have done microservices you will know that one of 
+the trickier elements to this is &quot;Service Discovery&quot;. This article will briefly 
+talk about some existing solutions to this, and will spend the rest of the 
+article talking about on particular framework for aiding in this area called &quot;<code>Consul</code>&quot;.&nbsp;</p>
+<p>&nbsp;</p>
+
+<h1><a name="Problem-we-are-trying-to-solve" id="Problem-we-are-trying-to-solve">Problem we are trying to solve</a></h1>
+<p>So what is the problem exactly. Lets consider this image</p>
+<p><img alt="" height="369" src="TheProblemWeAreTryingToSolve.png" width="630"></p>
+<p>Say we have a bunch of services out in the wild SystemB/SystemC in this 
+example, and we have other services (or UIs) SystemA/SystemD in this example, 
+that want to make use of the existsing services. However in order to do that we 
+need to know where these existing services live, or make some assumptions about 
+their DNS names that should be long lived. This the act of &quot;discovery&quot;, and is 
+essentially what the rest of this article will focus on. </p>
+<p>&nbsp;</p>
+
+<h1><a name="Existing-solutions" id="Existing-solutions">Existing solutions</a></h1>
+<p>There are quite a few frameworks that may aid in the development of&nbsp; 
+&quot;discovery&quot; mechanisms</p>
+<p>&nbsp;</p>
+<h2><a name="Zookeeper" id="Zookeeper">Zookeeper</a></h2>
+<p>Zookeeper has server nodes that require a quorum of nodes to operate (usually 
+a simple majority). They are strongly-consistent and expose various primitives 
+that can be used through client libraries within applications to build complex 
+distributed systems. The problem with this, is that while it offers absolute 
+freedom its all down to you to do/build.</p>
+<h2><a name="Redis/DataStore" id="Redis/DataStore">Redis/DataStore</a></h2>
+<p>You could use Redis cache to be used by services to store meta data, and then 
+a consumer could query the cache. However to make this resilient you really need 
+some form of clustering, and some consensus/gossip to achieve consistency. This 
+is fairly hard so most people just cut corners and make this a singleton, which 
+is obviously a single point of failure.</p>
+<h2><a name="Kubernetes" id="Kubernetes">Kubernetes</a></h2>
+<p>Kubernetes does a good job of &quot;Disvovery&quot; by way of Services/DNS addon/pods 
+all of which can easily be load balanced (providing you're using a cloud hosted 
+Kubernetes). I have written about this before, so if you are interested you can 
+read more here : <a href="https://sachabarbs.wordpress.com/kubernetes-series/">
+https://sachabarbs.wordpress.com/kubernetes-series/</a></p>
+<p>This is a great solution, providing your stuff is running in containers 
+(prefferably in a cloud environment)</p>
+<h2><a name="Consul" id="Consul">Consul</a></h2>
+<p><code>Consul </code>(to my mind) is the only tool/framework that tackles 
+&quot;discovery&quot; head on, and actually provides a rich tool that does that this job, 
+and does it well, with little effort from the developer. This page is actually a 
+pretty good read of the comparisons between <code>Consul </code>and others :
+<a href="https://www.consul.io/intro/vs/index.html" target="_blank">
+https://www.consul.io/intro/vs/index.html</a>&nbsp;</p>
+<p>For the remainder of the article I will be concentrating on <code>Consul</code></p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<h1><a name="Consul-discussion" id="Consul-discussion">Consul discussion</a></h1>
+<p>So before we get into the demo app, lets just spend a bit of time talking 
+about what <code>Consul </code>is, who created it, and why I think it's ace.</p>
+<h2><a name="Who-created-Consul,-why-should-we-trust-it?" id="Who-created-Consul,-why-should-we-trust-it?">Who created Consul, why should we trust it?</a></h2>
+<p><code>Consul </code>was created by Hashicorp, who are the same team that made 
+Vagrant (which is a awesome VM registry system,). Hashicorp know what they are 
+doing, they have a proven track record of great products. So yes you can trust 
+them, they have your back.</p>
+<h2><a name="The-basic-idea" id="The-basic-idea">The basic idea</a></h2>
+<p>The main points of <code>Consul </code>are these</p>
+<ul>
+	<li>Provide a way of registering services with a catalog, along with 
+	queryable metadata</li>
+	<li>Provide a way of querying the catalog using metadata</li>
+	<li>Provide the ability to health check services</li>
+	<li>Provide a KeyValue store</li>
+	<li>Exposes a way to setup ACLs (access control lists)</li>
+	<li>Exposes a way to create distributed Semaphore.&nbsp; This is useful when 
+	you want to coordinate many services while restricting access to certain 
+	resources. See here for more information :
+	<a href="https://www.consul.io/docs/guides/semaphore.html" target="_blank">
+	https://www.consul.io/docs/guides/semaphore.html</a>, and also refer to the 
+	relevant Client library for the exact language example that you need</li>
+	<li>Exposes a way to use <code>Consul </code>to create your own client side 
+	leader election. See here for more information :
+	<a href="https://www.consul.io/docs/guides/leader-election.html" target="_blank">
+	https://www.consul.io/docs/guides/leader-election.html</a>, and also refer 
+	to the relevant Client library for the exact language example that you need</li>
+</ul>
+<h2><a name="Is-it-reliable?" id="Is-it-reliable?">Is it reliable?</a></h2>
+<p>At is heart <code>Consul </code>is expecting you to set you to set up a 
+cluster where there is a gossip protocol in place between the cluster nodes.
+<code>Consul </code>uses <a href="https://www.serf.io/" target="_blank">Serf</a> 
+(see <a href="https://www.consul.io/docs/internals/gossip.html" target="_blank">
+https://www.consul.io/docs/internals/gossip.html</a>, btw Serf is another 
+Hashicorp product) to handle the gossiping. Essentially there will some form of 
+consensus/leadship/consistency/replication that is handled by the gossiping 
+between nodes, this is what will give it the reliability.</p>
+<h2><a name="Client-libraries" id="Client-libraries">Client libraries</a></h2>
+<p><code>Consul </code>as stated above exposes a REST API/Go client to allow you 
+get your own services/KeyValues/ACLs into the <code>Consul </code>machinery. You 
+can totally use these REST APIs/Go client no problem, there are however a great 
+number of community based clients that wrap the <code>Consul </code>REST APIs 
+for you, so it may be worth having a look at these.</p>
+<p>You can see the full list of clients here :
+<a href="https://www.consul.io/api/libraries-and-sdks.html" target="_blank">
+https://www.consul.io/api/libraries-and-sdks.html</a>&nbsp;&nbsp;</p>
+<h2><a name="Web-dashboard" id="Web-dashboard">Web dashboard</a></h2>
+<p>If you are running a <code>Consul </code>agent you should be able to get to a 
+web dashboard which should look like this out of the box (NOTE that I have 
+created the following environment variable <code>CONSUL_UI_BETA</code> wihch is 
+set to <code>true</code>, to use the &quot;new UI&quot;)</p>
+<p>Navigate to <code>http:localhost:8500</code></p>
+<p>&nbsp;</p>
+<p><img alt="" height="354" src="ConsulWebUIOfOfTheBox.png" width="630"></p>
+<p>This web UI allows you to see the following</p>
+<ul>
+	<li>Registered services</li>
+	<li>The cluster nodes</li>
+	<li>The Key/Values for the KeyValueStore</li>
+	<li>Any ACL (Access Control List) values you have setup</li>
+</ul>
+<p>We will look at this web app again, once I show you how to use&nbsp; <a href="https://github.com/PlayFab/consuldotnet" target="_blank">
+Consul.NET</a>, to self register with <code>Consul</code></p>
+
+
+
+<p>&nbsp;</p>
+<h1><a name="Demo-app-using-Consul.Net" id="Demo-app-using-Consul.Net">Demo app using Consul.Net</a></h1>
+<p>As stated above there are many Consul REST wrappers, but I chose to show the 
+.NET one, which uses <a href="https://github.com/PlayFab/consuldotnet" target="_blank">
+Consul.NET</a>, it is a .NET Core 2.0 WebAPI and simple Console app client</p>
+<p>&nbsp;</p>
+<p>The demo app does the following things:</p>
+<ul>
+	<li>Shows how to self register an API with <code>Consul</code></li>
+	<li>Shows how to hookup an API health check with <code>Consul</code></li>
+	<li>Shows how to use the <code>Consul</code>KeyValue store</li>
+	<li>Shows how a client can us the <code>Consul</code>Catalog to discover 
+	services</li>
+	<li>Shows the client using a &quot;discovered&quot; API</li>
+</ul>
+<p>&nbsp;</p>
+<p>Although <a href="https://github.com/PlayFab/consuldotnet" target="_blank">
+Consul.NET</a> is available via NuGet its probably still good to familiarise 
+yourself with the tests/API, which you can read about at its GitHub repo.</p>
+<h2><a name="&nbsp;" id="&nbsp;">&nbsp;</a></h2>
+<h2><a name="Demo-app-prerequisites" id="Demo-app-prerequisites">Demo app prerequisites</a></h2>
+<ul>
+	<li><a href="https://www.consul.io/downloads.html" target="_blank">Consul.IO 
+	download</a>, just make sure consul.exe is available on your path</li>
+</ul>
+<p>&nbsp;</p>
+<h2><a name="Running-The-Demo" id="Running-The-Demo">Running The Demo</a></h2>
+<p>You can grab the code for this article from my repo :
+<a href="https://github.com/sachabarber/ConsulDemo" target="_blank">
+https://github.com/sachabarber/ConsulDemo</a>, once you download that just do 
+the following 2 things:</p>
+<ul>
+	<li>Open a command prompt window to where you have the <code>consul.exe</code> 
+	and issue this command <code>consul agent -dev</code>. This will start a 
+	single node to try stuff out against. This data will not survive a <code>Consul</code>restart. As such this is obviously not fit for production, its 
+	just so you can try stuff out. Teaching you about clusters is outside the 
+	scope of this article, please just refer to the docs for that :
+	<a href="https://www.consul.io/intro/getting-started/join.html" target="_blank">
+	https://www.consul.io/intro/getting-started/join.html</a></li>
+	<li>Open the code from the repo above in Visual Studio, and ensure that you 
+	run the projects in this order<ul>
+		<li><code>ConsulDemoApi</code>, just wait for the API page to launch in a brwoser and show an empty JSON array response (this is the starting point for the demo app, the client will provide some items when it discovers and uses the API)</li>
+		<li><code>ConsulDemoApi.Client</code>, once you are sure the API is running, press a key in the clients console to allow to to discover and use the API via 
+		<code>Consul</code></li>
+	</ul>
+	</li>
+</ul>
+<p>That is all there is to it</p>
+<p>&nbsp;</p>
+
+<h2><a name="An-example-API" id="An-example-API">An example API</a></h2>
+<p>The example API could be anything to be fair, its more about how to register 
+it with Consul. However I kind of wanted to also show how to use the Consul 
+KeyValue store, so have gone for a simple .NET Core 2.0 WebApi project, which 
+has 2 controllers</p>
+<ul>
+	<li><code>ValuesController </code>: Which is a simple controller that 
+	expects to PUT/GET/DELETE items from the <code>Consul </code>KeyValue store</li>
+	<li><code>HealthController </code>: This is used by the <code>Consul </code>
+	health check associated with the registration of this overall service with <code>Consul </code></li>
+</ul>
+<h3><a name="API-controller" id="API-controller">API controller</a></h3>
+<p>This is the entire code for the <code>ValuesController </code>which I think 
+is fairly self explanatory. The <code>Consul </code>KeyValue store is that easy 
+to use via&nbsp; <a href="https://github.com/PlayFab/consuldotnet" target="_blank">
+Consul.NET</a> </p>
+<pre lang="csharp">
+using System;
+using System.Collections.Generic;
+using System.Text;
+using System.Threading.Tasks;
+using Consul;
+using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json.Linq;
+
+namespace ConsulDemoApi.Controllers
+{
+    [Produces("application/json")]
+    [Route("api/[controller]")]
+    public class ValuesController : Controller
+    {
+        private Func&lt;IConsulClient&gt; _consulClientFactory;
+
+        public ValuesController(Func&lt;IConsulClient&gt; consulClientFactory)
+        {
+            _consulClientFactory = consulClientFactory;
+        }
+
+
+        // GET api/values
+        [HttpGet]
+        public async Task&lt;IEnumerable&lt;string&gt;&gt; Get()
+        {
+            using (var client = _consulClientFactory())
+            {
+                var queryResult = await client.KV.List("ConsulDemoApi-ID-");
+                if (queryResult.StatusCode == System.Net.HttpStatusCode.OK)
+                {
+                    List&lt;string&gt; finalResults = new List&lt;string&gt;();
+                    foreach (var matchedPair in queryResult.Response)
+                    {
+                        finalResults.Add(Encoding.UTF8.GetString(matchedPair.Value, 0,
+                            matchedPair.Value.Length));
+                    }
+                    return finalResults;
+                }
+                return new string[0];
+            }
+        }
+
+        // GET api/values/5
+        [HttpGet("{id}")]
+        public async Task&lt;string&gt; Get(int id)
+        {
+            using (var client = _consulClientFactory())
+            {
+                var getPair = await client.KV.Get($"ConsulDemoApi-ID-{id.ToString()}");
+                return Encoding.UTF8.GetString(getPair.Response.Value, 0,
+                    getPair.Response.Value.Length);
+            }
+        }
+
+        // PUT api/values/5
+        [HttpPut("{id}")]
+        public async Task Put(int id, [FromBody]JObject jsonData)
+        {
+            using ( var client = _consulClientFactory())
+            {
+                var jsonValue = jsonData["Value"].ToString();
+                var putPair = new KVPair($"ConsulDemoApi-ID-{id.ToString()}")
+                {
+                    Value = Encoding.UTF8.GetBytes(jsonValue)
+                };
+                await client.KV.Put(putPair);
+            }
+        }
+
+        // DELETE api/values/5
+        [HttpDelete("{id}")]
+        public async Task Delete(int id)
+        {
+            using (var client = _consulClientFactory())
+            {
+                await client.KV.Delete($"ConsulDemoApi-ID-{id.ToString()}");
+            }
+        }
+    }
+}
+</pre>
+<p>&nbsp;</p>
+<p>There honestly is not much more to say about this controller, its simple REST 
+over the KeyValue store.</p>
+<p>&nbsp;</p>
+<h3><a name="Registration/health-checks" id="Registration/health-checks">Registration/health checks</a></h3>
+<p>Ok so now that we have an API, we would like to register it with <code>Consul</code>. 
+This is the good stuff. Lets see how we do that</p>
+<p>It roughly breaks down to these steps (remember I am using .NET Core 2.0, so 
+this may vary for you if that is not what you are using)</p>
+<h4><a name="Create-some-config" id="Create-some-config">Create some config</a></h4>
+<p>This is my minimal <code>appsettings.json</code> file for my local <code>Consul</code></p>
+<pre lang="jscript">
+{
+  "ConsulConfig": {
+    "Address": "http://127.0.0.1:8500",
+    "ServiceName": "ConsulDemoApi",
+    "ServiceID": "ConsulDemoApi-v1"
+  }
+}
+<p>See how this contains a service name / ID (ID MUST be unique)</p>
+</pre>
+<h4><a name="Register-the-service" id="Register-the-service">Register the service</a></h4>
+<p>The next step is to register the service. There are many ways to do this, but .NET Core 2.0 comes with this neat iterface <code>IHostedService</code> which 
+allows me to register start up tasks with the http pipeline.</p>
+<p>So its simply a matter of adding some registration code in an <code>IHostedService</code>&nbsp; 
+implementation. Here is the demo app one</p>
+<pre lang="csharp">
+using System;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Consul;
+using ConsulDemoApi.Config;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+
+namespace ConsulDemoApi.Services
+{
+    public class ConsulHostedService : IHostedService
+    {
+        private Task _executingTask;
+        private CancellationTokenSource _cts;
+        private readonly IConsulClient _consulClient;
+        private readonly IOptions&lt;ConsulConfig&gt; _consulConfig;
+        private readonly ILogger&lt;ConsulHostedService&gt; _logger;
+        private readonly IServer _server;
+        private string _registrationID;
+
+        public ConsulHostedService(
+            IConsulClient consulClient, 
+            IOptions&lt;ConsulConfig&gt; consulConfig, 
+            ILogger&lt;ConsulHostedService&gt; logger, 
+            IServer server)
+        {
+            _server = server;
+            _logger = logger;
+            _consulConfig = consulConfig;
+            _consulClient = consulClient;
+
+        }
+        public async Task StartAsync(CancellationToken cancellationToken)
+        {
+            // Create a linked token so we can trigger cancellation outside of this token's cancellation
+            _cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+
+            var features = _server.Features;
+            var addresses = features.Get&lt;IServerAddressesFeature&gt;();
+            var address = addresses.Addresses.First();
+
+            var uri = new Uri(address);
+            _registrationID = $"{_consulConfig.Value.ServiceID}-{60008}";
+
+            var registration = new AgentServiceRegistration()
+            {
+                ID = _registrationID,
+                Name = _consulConfig.Value.ServiceName,
+                Address = $"{uri.Scheme}://{uri.Host}",
+                Port = 60008,
+                Tags = new[] { "Consul", "SachaBarber-Demo" },
+                Check = new AgentServiceCheck()
+                {
+                    HTTP = $"{uri.Scheme}://{uri.Host}:60008/api/health/status",
+                    Timeout = TimeSpan.FromSeconds(3),
+                    Interval = TimeSpan.FromSeconds(10)
+                }
+            };
+
+            _logger.LogInformation("Registering in Consul");
+            await _consulClient.Agent.ServiceDeregister(registration.ID, _cts.Token);
+            await _consulClient.Agent.ServiceRegister(registration, _cts.Token);
+        }
+
+        public async Task StopAsync(CancellationToken cancellationToken)
+        {
+            _cts.Cancel();
+            _logger.LogInformation("Deregistering from Consul");
+            try
+            {
+                await _consulClient.Agent.ServiceDeregister(_registrationID, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Deregisteration failed");
+            }
+        }
+    }
+}
+</pre>
+<p>The main point of the code is obviously to register THIS service with Consul. 
+So make sure you understand the register section in the code above.&nbsp; The 
+most important point I think is also how extra metadata is associated with the 
+registration, this allows a consumer to query using this metadata without 
+knowing anything about the actual endpoint (which is what we are trying to 
+ascertain after all), we simple go &quot;<strong>I want all services called 
+'ConsulDemoApi'</strong>&quot;, and we would get a response of all such tags services 
+registered with <code>Consul</code>, which would include the endpoint information for the service in the response, which may then be used by the calling consumer.</p>
+<p>See 
+how the registration also includes a <code>Check Consul</code> comes with many 
+flavors of <code>Check </code>and this is just one that will call a REST 
+endpoint, in this case one that is part of this app the <code>HealthController</code> which looks like this</p>
+<pre lang="csharp">
+using Microsoft.AspNetCore.Mvc;
+
+namespace ConsulDemoApi.Controllers
+{
+    [Route("api/[controller]")]
+    public class HealthController : Controller
+    {
+        [HttpGet("status")]
+        public IActionResult Status() =&gt; Ok();
+    }
+}</pre>
+<p>For a full list of the different types of Check available read here :
+<a href="https://www.consul.io/docs/agent/checks.html" target="_blank">
+https://www.consul.io/docs/agent/checks.html</a></p>
+<h4><a name="Bootstrap-the-IOC-container" id="Bootstrap-the-IOC-container">Bootstrap the IOC container</a></h4>
+<p>The final step is to ensure the correct services are registered in the IOC 
+container (this may vary depending on your setup)</p>
+<p>Since I am using .NET Core 2.0 WebAPI, for the demo app this is done as 
+follows in <code>Startup.cs</code></p>
+<p>&nbsp;</p>
+<pre lang="csharp">
+public void ConfigureServices(IServiceCollection services)
+{
+    services.AddSingleton&gt;IHostedService, ConsulHostedService&gt;();
+    services.Configure&gt;ConsulConfig&gt;(Configuration.GetSection("ConsulConfig"));
+    services.AddSingleton&gt;IConsulClient, ConsulClient&gt;(p =&gt; new ConsulClient(consulConfig =&gt;
+    {
+        var address = Configuration["ConsulConfig:Address"];
+        consulConfig.Address = new Uri(address);
+    }));
+
+    services.AddSingleton&gt;Func&gt;IConsulClient&gt;&gt;(p =&gt; () =&gt; new ConsulClient(consulConfig =&gt;
+    {
+        var address = Configuration["ConsulConfig:Address"];
+        consulConfig.Address = new Uri(address);
+    }));
+
+
+    .....
+}
+</pre>
+<p>&nbsp;</p>
+
+
+
+<h2><a name="An-example-client" id="An-example-client">An example client</a></h2>
+<p>So the example client is a simple .NET core 2.0 Console app that does the 
+following:</p>
+<ul>
+	<li>Discovers 1-N services using the <code>Consul </code>query mechanism 
+	(where we use metadata about the service we want to discover and use)</li>
+	<li>Deletes all previous values CURRENT discivered service</li>
+	<li>Puts some new values using the CURRENT discovered service</li>
+	<li>Gets all the new values using the CURRENT discovered service</li>
+</ul>
+<p>&nbsp;</p>
+<h3><a name="Get-metadata-using-the-Catalog" id="Get-metadata-using-the-Catalog">Get metadata using the Catalog</a></h3>
+<p>The hard part (well its actually quite easy) is to discover the services that 
+match a given set of metadata. This is done as follows:</p>
+<pre lang="csharp">
+private readonly List&lt;Uri&gt; _serverUrls;
+
+
+public async Task Initialize()
+{
+    var consulClient = new ConsulClient(c =&gt;
+    {
+        var uri = new Uri(_configuration["ConsulConfig:Address"]);
+        c.Address = uri;
+    });
+
+    _logger.LogInformation("Discovering Services from Consul.");
+
+    var services = await consulClient.Agent.Services();
+    foreach (var service in services.Response)
+    {
+        var isDemoApi = service.Value.Tags.Any(t =&gt; t == "Consul") &amp;&amp;
+            service.Value.Tags.Any(t =&gt; t == "SachaBarber-Demo");
+        if (isDemoApi)
+        {
+            var serviceUri = new Uri($"{service.Value.Address}:{service.Value.Port}");
+            _serverUrls.Add(serviceUri);
+        }
+    }
+
+    ....
+}</pre>
+<p>See how we use the <code>Tags</code> to provide a predicate for the search. Then we simply store the endpoint information that matches that query into a list so we can then use the discovered services later</p>
+<h3><a name="Retries-and-switchover-using-Polly" id="Retries-and-switchover-using-Polly">Retries and switchover using Polly</a></h3>
+<p>One neat trick here is that we can make use of the Polly retry library, such 
+that after a certain amount of retries we could switch over to the next service 
+that we discovered. This is quite common in trading apps, where there might be 
+loads of price streaming services and if one dies we go to the next.</p>
+<pre lang="csharp">
+serverRetryPolicy = Policy.Handle&lt;HttpRequestException&gt;()
+    .RetryAsync(retries, (exception, retryCount) =&gt;
+    {
+        ChooseNextServer(retryCount);
+    });
+	
+private void ChooseNextServer(int retryCount)
+{
+    if (retryCount % 2 == 0)
+    {
+        _logger.LogWarning("Trying next server... \n");
+        _currentConfigIndex++;
+
+        if (_currentConfigIndex &gt; _serverUrls.Count - 1)
+            _currentConfigIndex = 0;
+    }
+}
+
+	
+</pre>
+<p>Then for the calls to use the discovered service we can simply use the curent "working" service endpoint informaton</p>
+<pre lang="csharp">
+public Task&lt;bool&gt; DeleteValueAsync(int id)
+{
+    return _serverRetryPolicy.ExecuteAsync(async () =&gt;
+    {
+        var serverUrl = _serverUrls[_currentConfigIndex];
+        var requestPath = $"{serverUrl}api/values/{id}";
+        _logger.LogInformation($"Making request to DELETE {requestPath}");
+        var response = await _apiClient.DeleteAsync(requestPath).ConfigureAwait(false);
+        return response.IsSuccessStatusCode;
+    });
+}
+</pre>
+<p>&nbsp;</p>
+<h2><a name="Web-dashboard-for-the-demo-app" id="Web-dashboard-for-the-demo-app">Web dashboard for the demo app</a></h2>
+
+<p>Now that we have a demo app, and we have started <code>Consul </code>(from 
+command line <code>consul agent -dev</code>) we can let it run and have a look 
+at the <code>Consul </code>web UI again</p>
+<p>First ensure you have started Consul and run both the demo app projects, you 
+should see output like this</p>
+<p><img alt="" height="383" src="output.png" width="630"></p>
+<p>Then lets launch the <code>Consul </code>web app again, we can now see our 
+registered service (remember the <code>-dev</code> flag on <code>Consul </code>
+starts a NON persisted <code>Consul </code>single node cluster, so you will not 
+see anything after a machine restart)</p>
+<p><img alt="" height="354" src="WebUIAfterRun1.png" width="630"></p>
+<p>We can drill into our new service registration, and we see our health check 
+is working too</p>
+<p><img alt="" height="354" src="WebUIAfterRun2.png" width="630"></p>
+<p>We also made use of the KeyValue store, so lets see that</p>
+<p><img alt="" height="354" src="WebUIAfterRun3.png" width="630"></p>
+<p>Where we can also look at one of the values</p>
+<p><img alt="" height="354" src="WebUIAfterRun4.png" width="630"></p>
+<p>Yay its all working just as we want it to. And that ladies and gents is a 
+wrap.</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<h1><a name="Conclusion" id="Conclusion">Conclusion</a></h1>
+<p>Consul is a dream to use, and if you have not done so already you should 
+really take a look. Its awesome</p>
+
+
+
+
+
+
+
+
+
+
+
+

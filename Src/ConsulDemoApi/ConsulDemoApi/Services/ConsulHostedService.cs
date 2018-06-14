@@ -52,7 +52,13 @@ namespace ConsulDemoApi.Services
                 Name = _consulConfig.Value.ServiceName,
                 Address = $"{uri.Scheme}://{uri.Host}",
                 Port = 60008,
-                Tags = new[] { "Consul", "SachaBarber-Demo" }
+                Tags = new[] { "Consul", "SachaBarber-Demo" },
+                Check = new AgentServiceCheck()
+                {
+                    HTTP = $"{uri.Scheme}://{uri.Host}:60008/api/health/status",
+                    Timeout = TimeSpan.FromSeconds(3),
+                    Interval = TimeSpan.FromSeconds(10)
+                }
             };
 
             _logger.LogInformation("Registering in Consul");

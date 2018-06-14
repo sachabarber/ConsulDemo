@@ -33,3 +33,8 @@ Check the web API  [http://127.0.0.1:8500](http://127.0.0.1:8500)
 ## Step 2 : Open the solution and run these in order
 - ConsulDemoApi
 - ConsulDemoApi.Client
+
+## Step 3 : Read the full article 
+Read the full article that describes this here [https://www.codeproject.com/Articles/1248381/Microservices-Service-Discovery](https://www.codeproject.com/Articles/1248381/Microservices-Service-Discovery)
+
+

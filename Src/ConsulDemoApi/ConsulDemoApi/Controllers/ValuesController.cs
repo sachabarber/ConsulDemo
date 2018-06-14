@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Consul;
@@ -9,6 +8,7 @@ using Newtonsoft.Json.Linq;
 
 namespace ConsulDemoApi.Controllers
 {
+    [Produces("application/json")]
     [Route("api/[controller]")]
     public class ValuesController : Controller
     {
