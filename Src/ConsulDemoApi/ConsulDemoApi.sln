@@ -1,11 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.27130.0
+VisualStudioVersion = 15.0.27130.2036
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ConsulDemoApi", "ConsulDemoApi\ConsulDemoApi.csproj", "{231420FC-A92F-4337-BC6E-5F6081966E95}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ConsulDemoApi.Client", "..\ConsulDemoApi.Client\ConsulDemoApi.Client.csproj", "{7A6DD6F0-47C1-41DE-BCC7-0E7AAC05DA41}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ConsulDemoApi.Client", "ConsulDemoApi.Client\ConsulDemoApi.Client.csproj", "{FFA1C86A-4EAA-4331-9326-038FBDFBDD5F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -17,10 +17,10 @@ Global
 		{231420FC-A92F-4337-BC6E-5F6081966E95}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{231420FC-A92F-4337-BC6E-5F6081966E95}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{231420FC-A92F-4337-BC6E-5F6081966E95}.Release|Any CPU.Build.0 = Release|Any CPU
-		{7A6DD6F0-47C1-41DE-BCC7-0E7AAC05DA41}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{7A6DD6F0-47C1-41DE-BCC7-0E7AAC05DA41}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{7A6DD6F0-47C1-41DE-BCC7-0E7AAC05DA41}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{7A6DD6F0-47C1-41DE-BCC7-0E7AAC05DA41}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FFA1C86A-4EAA-4331-9326-038FBDFBDD5F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FFA1C86A-4EAA-4331-9326-038FBDFBDD5F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FFA1C86A-4EAA-4331-9326-038FBDFBDD5F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FFA1C86A-4EAA-4331-9326-038FBDFBDD5F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
