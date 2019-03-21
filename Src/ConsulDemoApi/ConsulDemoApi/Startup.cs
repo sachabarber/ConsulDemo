@@ -1,5 +1,4 @@
-﻿using System;
-using Consul;
+﻿using Consul;
 using ConsulDemoApi.Config;
 using ConsulDemoApi.Services;
 using Microsoft.AspNetCore.Builder;
@@ -11,6 +10,9 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using Swashbuckle.AspNetCore.Swagger;
+using System;
+using IApplicationLifetime = Microsoft.AspNetCore.Hosting.IApplicationLifetime;
+using IHostingEnvironment = Microsoft.AspNetCore.Hosting.IHostingEnvironment;
 
 namespace ConsulDemoApi
 {
@@ -61,7 +63,7 @@ namespace ConsulDemoApi
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory, IApplicationLifetime lifetime)
         {
-            loggerFactory.AddConsole();
+            loggerFactory?.AddConsole();
 
             if (env.IsDevelopment())
             {

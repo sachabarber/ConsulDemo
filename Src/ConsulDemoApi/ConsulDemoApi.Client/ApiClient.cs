@@ -1,17 +1,17 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Text;
-using System.Threading.Tasks;
-using Consul;
+﻿using Consul;
 using ConsulDemoApi.Client.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Polly;
 using Polly.Retry;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace ConsulDemoApi.Client
 {
@@ -20,7 +20,7 @@ namespace ConsulDemoApi.Client
         private readonly List<Uri> _serverUrls;
         private readonly IConfigurationRoot _configuration;
         private readonly HttpClient _apiClient;
-        private RetryPolicy _serverRetryPolicy;
+        private AsyncRetryPolicy _serverRetryPolicy;
         private int _currentConfigIndex;
         private readonly ILogger<ApiClient> _logger;
 
@@ -47,7 +47,7 @@ namespace ConsulDemoApi.Client
             var services = await consulClient.Agent.Services();
             foreach (var service in services.Response)
             {
-                var isDemoApi = service.Value.Tags.Any(t => t == "Consul") && 
+                var isDemoApi = service.Value.Tags.Any(t => t == "Consul") &&
                     service.Value.Tags.Any(t => t == "SachaBarber-Demo");
                 if (isDemoApi)
                 {
