@@ -3,7 +3,7 @@ Consul demo app for Microservice, service discovery using [Consul.Net](https://g
 
 You will need to grab the following before you start
 
-# Consol download
+# Consul download
 
 [Consul downloads](https://www.consul.io/downloads.html)
 
